@@ -18,8 +18,9 @@ void calculate(char* outputFile)
         scanf("%d", &choice);
     }
 	char* inPut=NULL;
-	char outPut[100]={'0'};
-	double result; 
+	char outPut[100]={'\0'};
+	double result;
+	int right=0;//记录表达式有无问题 
 		switch (choice){
 			case 1:
 				printf("输入中缀表达式:\n");
@@ -29,12 +30,29 @@ void calculate(char* outputFile)
 						break;
 					}
 					add_history(inPut);
-					transform(inPut,outPut);
+					transform(inPut,outPut);//中缀转后缀
 					free(inPut);
-					printf("其后缀表达式为%s\n",outPut);//中缀表达式转为后缀表达式
-					get_result(outPut,&result);
+					char PrintOutPut[100]={'\0'};
+					for(int i=0;outPut[i]!='\0';i++){//将#换为-,便于使用者理解
+						if(outPut[i]=='#'){
+							PrintOutPut[i]='-';
+						}else{
+							PrintOutPut[i]=outPut[i];
+						}
+					}
+					printf("其后缀表达式为%s\n",PrintOutPut);//输出后缀表达式
+					get_result(outPut,&result,&right);
+					if (right==1){
+							FILE* file = fopen(outputFile, "a");
+							if (file != NULL)
+							{
+								fprintf(file, "%s\n","输入表达式有错");
+								fclose(file);
+							}
+							continue;
+					}//表达式错误，不进行计算
 					//如果有outputFile，将结果写入文件
-					if (outputFile!=NULL)
+					else if (outputFile!=NULL)
 					{
 						FILE* file = fopen(outputFile, "a");
 						if (file != NULL)
@@ -65,8 +83,17 @@ void calculate(char* outputFile)
 					if(strcmp(outPut,"quit")==0){
 						break;
 					}
-					get_result(outPut,&result);
-					if (outputFile!=NULL)
+					get_result(outPut,&result,&right);
+					if (right==1){
+							FILE* file = fopen(outputFile, "a");
+							if (file != NULL)
+							{
+								fprintf(file, "%s\n","输入表达式有错");
+								fclose(file);
+							}
+							continue;
+					}//表达式错误，不进行计算
+					else if (outputFile!=NULL)
 					{
 						FILE* file = fopen(outputFile, "a");
 						if (file != NULL)
@@ -88,11 +115,12 @@ void calculate(char* outputFile)
 	return;
 }
 
-void get_result(char* outPut,double* result)
+void get_result(char* outPut,double* result,int* right)
 {
 	struct F_stack calculate;//用于计算的栈 
 	init_float_stack(&calculate);
 	struct F_stack* currentStack=&calculate;//当前栈
+	*right = 0;//记录是否表达式是否正确
 
 	int i;//用于for循环 
 	for (i=0;i<strlen(outPut);i++)
@@ -101,6 +129,14 @@ void get_result(char* outPut,double* result)
 		switch(type){
 			case 1://读取到数字
 				{
+					if (isalpha(outPut[i])){
+			        printf("错误:字母无法参与运算\n");
+					free(currentStack->pBase);
+					free(currentStack->pNext);
+					*right = 1;
+			        return; 
+    				}	//处理字母
+
 					int floatState=0;//标记是否为浮点数
 					int token1=0;//用来记录整数部分 
 					double token2=0;//用来记录小数部分 
@@ -126,8 +162,8 @@ void get_result(char* outPut,double* result)
 							floatState=1;
 						} 
 					}
-					i--;
-					double number=token1+token2;
+					i--;//回退一位，因为for循环i++
+					double number=(token1+token2);
 					float_stack_push(currentStack,&number);
 					break;
 				}
@@ -145,8 +181,11 @@ void get_result(char* outPut,double* result)
 					double number;
 				    if (currentStack->pLast == NULL) { 
 			        printf("错误：右括号前没有匹配的左括号\n");
-			        return; // 返回非零以表示错误
-    				}	
+					*right = 1;
+					free(currentStack->pBase);
+						free(currentStack->pNext);
+			        return; 
+    				}	//处理左括号不足
 					float_stack_pop(currentStack,&number);
 					float_stack_push(currentStack->pLast,&number);
 					free(currentStack->pBase);
@@ -159,12 +198,18 @@ void get_result(char* outPut,double* result)
 					double pop1,pop2,result;
 					if(is_float_empty(currentStack)){
 						printf("错误：输入数字不足以进行运算\n");
-						return;
+						free(currentStack->pBase);
+						free(currentStack->pNext);
+						*right = 1;
+						return;//处理数字不足
 					}
 					float_stack_pop(currentStack,&pop1);
 					if(is_float_empty(currentStack)){
 						printf("错误：输入数字不足以进行运算\n");
-						return;
+						*right = 1;
+						free(currentStack->pBase);
+						free(currentStack->pNext);
+						return;//处理数字不足
 					}
 					float_stack_pop(currentStack,&pop2);
 					switch(outPut[i]){
@@ -180,6 +225,9 @@ void get_result(char* outPut,double* result)
 						case '/':
 						if(pop1==0){
 							printf("错误：除数不能为零\n");
+							*right = 1;
+							free(currentStack->pBase);
+							free(currentStack->pNext);
 							return;
 						}
 						result=pop2/pop1;
@@ -191,7 +239,15 @@ void get_result(char* outPut,double* result)
 			case 6://空格
 				{
 					break;
-				}   
+				}
+			case 7://负号
+				{
+					double pop;
+					float_stack_pop(currentStack,&pop);
+					double push=pop*-1;
+					float_stack_push(currentStack,&push);
+					break;
+				}
 		}
 	}
 	float_stack_pop(currentStack,result);

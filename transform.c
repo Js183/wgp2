@@ -64,25 +64,55 @@ void transform(char* inPut,char* outPut)//将中缀表达式转后缀表达式�
 			j++;
 			}
 			break;//跳出for循环 
-		}else{//读取运算符时 
-			while(!is_empty(&myStack)){
-				char elem;
-				stack_get_top(&myStack,&elem);
-				if(elem=='('){
-					break;//跳出while 
-				}else{
-					int Priority1=priority(inPut[i]);
-					int Priority2=priority(elem);
-					if(Priority2<Priority1) break;//跳出while 
-					else {
-						char elem2;
-						stack_pop(&myStack,&elem2);
-						outPut[j]=elem2;
-						j++;
+		}else if(type==5){//读取运算符时 
+		char operator = inPut[i];
+            if (operator == '-') {//读到'-'时，判断是否为负号
+                if (i == 0 ||judge(inPut[i - 1])==2 ) {
+                    char hash = '#';
+					stack_push(&myStack, &hash); // 在最开头、或在左括号后的-为负号，使用 "#" 表示负号
+                } else {
+                    // 减号
+                    while (!is_empty(&myStack)) {
+                        char elem;
+                        stack_get_top(&myStack, &elem);
+                        if (elem == '(') {
+                            break;//跳出while
+                        } else {
+                            int Priority1 = priority(inPut[i]);
+                            int Priority2 = priority(elem);
+                            if (Priority2 < Priority1) break;//跳出while
+                            else {
+                                char elem2;
+                                stack_pop(&myStack, &elem2);
+                                outPut[j] = elem2;
+                                j++;
+                            }
+                        }
+                    }
+                    stack_push(&myStack, &inPut[i]);
+                }
+            }else{
+				while(!is_empty(&myStack)){
+					char elem;
+					stack_get_top(&myStack,&elem);
+					if(elem=='('){
+						break;//跳出while 
+					}else{
+						int Priority1=priority(inPut[i]);
+						int Priority2=priority(elem);
+						if(Priority2<Priority1) break;//跳出while 
+						else {
+							char elem2;
+							stack_pop(&myStack,&elem2);
+							outPut[j]=elem2;
+							j++;
+						}
 					}
 				}
+				stack_push(&myStack,&inPut[i]);
 			}
-			stack_push(&myStack,&inPut[i]);
+		}else if (type==6){
+			;
 		}
 	}
 	outPut[j]='\0';
@@ -114,6 +144,8 @@ int judge(char i) //判断当前项为字母、符号还是括号
 		judge=5;//运算符 
 	}else if(i==' '){
 		judge=6;//空格 
+	}else if(i=='#'){
+		judge=7;//负号
 	}
 	return judge;
 }

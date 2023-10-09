@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     }
     // 初始化历史记录
     read_history("History"); // 从文件中加载历史记录
-    printf("\033[1;31m请输入命令(可输入help获取操作帮助信息)：\n\033[0m");// 设置文本为粗体红色
+	printf("\033[1;31m请输入命令(可输入help获取操作帮助信息)：\n\033[0m");// 设置文本为粗体红色
     while (1)
     {
         input = readline("");
